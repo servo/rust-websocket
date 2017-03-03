@@ -12,7 +12,7 @@ use stream::WebSocketStream;
 use dataframe::DataFrame;
 use ws::dataframe::DataFrame as DataFrameable;
 
-use openssl::ssl::{SslContext, SslMethod, SslStream};
+use openssl::ssl::{Ssl, SslMethod, SslContextBuilder, SslContext};
 
 pub use self::request::Request;
 pub use self::response::Response;
@@ -68,8 +68,8 @@ impl Client<DataFrame, Sender<WebSocketStream>, Receiver<WebSocketStream>> {
 	/// A connection is established, however the request is not sent to
 	/// the server until a call to ```send()```.
 	pub fn connect<T: ToWebSocketUrlComponents>(components: T) -> WebSocketResult<Request<WebSocketStream, WebSocketStream>> {
-		let context = try!(SslContext::new(SslMethod::Tlsv1));
-		Client::connect_ssl_context(components, &context)
+		let context = try!(SslContextBuilder::new(SslMethod::tls()));
+		Client::connect_ssl_context(components, &context.build())
 	}
 	/// Connects to the specified wss:// URL using the given SSL context.
 	///
@@ -86,10 +86,11 @@ impl Client<DataFrame, Sender<WebSocketStream>, Receiver<WebSocketStream>> {
 		));
 
 		let stream = if secure {
-			let sslstream = try!(SslStream::connect(context, connection));
+			let ssl = try!(Ssl::new(context));
+			let sslstream = try!(ssl.connect(connection)
+				                    .map_err(::result::WebSocketError::HandshakeError));
 			WebSocketStream::Ssl(sslstream)
-		}
-		else {
+		} else {
 			WebSocketStream::Tcp(connection)
 		};
 
