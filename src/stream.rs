@@ -1,7 +1,7 @@
 //! Provides the default stream type for WebSocket connections.
 extern crate net2;
 
-use std::io::{self, Read, Write};
+use std::io::{self, ErrorKind, Read, Write};
 use self::net2::TcpStreamExt;
 use openssl::ssl::SslStream;
 
@@ -80,7 +80,7 @@ impl WebSocketStream {
 	pub fn try_clone(&self) -> io::Result<WebSocketStream> {
 		Ok(match *self {
 			WebSocketStream::Tcp(ref inner) => WebSocketStream::Tcp(try!(inner.try_clone())),
-			WebSocketStream::Ssl(ref inner) => WebSocketStream::Ssl(try!(inner.try_clone())),
+			WebSocketStream::Ssl(_) => return Err(io::Error::new(ErrorKind::Other, "can't clone an ssl stream")),
 		})
 	}
 

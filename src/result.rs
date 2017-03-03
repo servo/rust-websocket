@@ -5,7 +5,9 @@ use std::str::Utf8Error;
 use std::error::Error;
 use std::convert::From;
 use std::fmt;
-use openssl::ssl::error::SslError;
+use std::net::TcpStream;
+use openssl::error::ErrorStack as SslError;
+use openssl::ssl::HandshakeError;
 use hyper::Error as HttpError;
 use url::ParseError;
 
@@ -27,6 +29,8 @@ pub enum WebSocketError {
 	NoDataAvailable,
 	/// An input/output error
 	IoError(io::Error),
+	/// An Ssl Handshake error
+	HandshakeError(HandshakeError<TcpStream>),
 	/// An HTTP parsing error
 	HttpError(HttpError),
 	/// A URL parsing error
@@ -56,6 +60,7 @@ impl Error for WebSocketError {
 			WebSocketError::DataFrameError(_) => "WebSocket data frame error",
 			WebSocketError::NoDataAvailable => "No data available",
 			WebSocketError::IoError(_) => "I/O failure",
+			WebSocketError::HandshakeError(_) => "SSL Handshake failure",
 			WebSocketError::HttpError(_) => "HTTP failure",
 			WebSocketError::UrlError(_) => "URL failure",
 			WebSocketError::SslError(_) => "SSL failure",
@@ -67,6 +72,7 @@ impl Error for WebSocketError {
 	fn cause(&self) -> Option<&Error> {
 		match *self {
 			WebSocketError::IoError(ref error) => Some(error),
+			WebSocketError::HandshakeError(ref error) => Some(error),
 			WebSocketError::HttpError(ref error) => Some(error),
 			WebSocketError::UrlError(ref error) => Some(error),
 			WebSocketError::SslError(ref error) => Some(error),
@@ -83,6 +89,12 @@ impl From<io::Error> for WebSocketError {
 			return WebSocketError::NoDataAvailable;
 		}
 		WebSocketError::IoError(err)
+	}
+}
+
+impl From<HandshakeError<TcpStream>> for WebSocketError {
+	fn from(err: HandshakeError<TcpStream>) -> WebSocketError {
+		WebSocketError::HandshakeError(err)
 	}
 }
 
