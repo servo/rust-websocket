@@ -19,11 +19,7 @@
 //! object with `begin()`.
 //!
 //! # Servers
-//! WebSocket servers act similarly to the `TcpListener`, and listen for connections.
-//! See the `Server` struct documentation for more information. The `bind()` and
-//! `bind_secure()` functions will bind the server to the given `SocketAddr`.
-//! `Server` implements Iterator and can be used to iterate over incoming `Request`
-//! items.
+//! removed 
 //!
 //! Requests can be validated using `validate()`, and other parts of the request may
 //! be examined (e.g. the Host header and/or the Origin header). A call to `accept()`
@@ -51,7 +47,6 @@ extern crate bitflags;
 extern crate test;
 
 pub use self::client::Client;
-pub use self::server::Server;
 pub use self::dataframe::DataFrame;
 pub use self::message::Message;
 pub use self::stream::WebSocketStream;
@@ -60,7 +55,6 @@ pub use self::ws::Receiver;
 
 pub mod ws;
 pub mod client;
-pub mod server;
 pub mod dataframe;
 pub mod message;
 pub mod result;
