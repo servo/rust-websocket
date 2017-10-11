@@ -6,15 +6,15 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 bitflags! {
 	/// Flags relevant to a WebSocket data frame.
-	pub flags DataFrameFlags: u8 {
+	pub struct DataFrameFlags: u8 {
 		/// Marks this dataframe as the last dataframe
-		const FIN = 0x80,
+		const FIN = 0x80;
 		/// First reserved bit
-		const RSV1 = 0x40,
+		const RSV1 = 0x40;
 		/// Second reserved bit
-		const RSV2 = 0x20,
+		const RSV2 = 0x20;
 		/// Third reserved bit
-		const RSV3 = 0x10,
+		const RSV3 = 0x10;
 	}
 }
 
@@ -114,7 +114,7 @@ pub fn read_header<R>(reader: &mut R) -> WebSocketResult<DataFrameHeader>
 				"Control frame length too long"
 			));
 		}
-		if !flags.contains(FIN) {
+		if !flags.contains(DataFrameFlags::FIN) {
 			return Err(WebSocketError::ProtocolError(
 				"Illegal fragmented control frame"
 			));
@@ -150,7 +150,7 @@ mod tests {
 		let header = [0x81, 0x2B];
 		let obtained = read_header(&mut &header[..]).unwrap();
 		let expected = DataFrameHeader {
-			flags: FIN,
+			flags: DataFrameFlags::FIN,
 			opcode: 1,
 			mask: None,
 			len: 43
@@ -160,7 +160,7 @@ mod tests {
 	#[test]
 	fn test_write_header_simple() {
 		let header = DataFrameHeader {
-			flags: FIN,
+			flags: DataFrameFlags::FIN,
 			opcode: 1,
 			mask: None,
 			len: 43
@@ -176,7 +176,7 @@ mod tests {
 		let header = [0x42, 0xFE, 0x02, 0x00, 0x02, 0x04, 0x08, 0x10];
 		let obtained = read_header(&mut &header[..]).unwrap();
 		let expected = DataFrameHeader {
-			flags: RSV1,
+			flags: DataFrameFlags::RSV1,
 			opcode: 2,
 			mask: Some([2, 4, 8, 16]),
 			len: 512
@@ -186,7 +186,7 @@ mod tests {
 	#[test]
 	fn test_write_header_complex() {
 		let header = DataFrameHeader {
-			flags: RSV1,
+			flags: DataFrameFlags::RSV1,
 			opcode: 2,
 			mask: Some([2, 4, 8, 16]),
 			len: 512
@@ -207,7 +207,7 @@ mod tests {
 	#[bench]
 	fn bench_write_header(b: &mut test::Bencher) {
 		let header = DataFrameHeader {
-			flags: RSV1,
+			flags: DataFrameFlags::RSV1,
 			opcode: 2,
 			mask: Some([2, 4, 8, 16]),
 			len: 512
