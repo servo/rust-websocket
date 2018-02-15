@@ -35,10 +35,10 @@
 extern crate hyper;
 extern crate unicase;
 extern crate url;
-extern crate rustc_serialize as serialize;
 extern crate openssl;
 extern crate rand;
 extern crate byteorder;
+extern crate base64;
 
 #[macro_use]
 extern crate bitflags;
