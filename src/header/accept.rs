@@ -3,7 +3,7 @@ use hyper::header::parsing::from_one_raw_str;
 use hyper;
 use std::fmt::{self, Debug};
 use std::str::FromStr;
-use serialize::base64::{ToBase64, FromBase64, STANDARD};
+use base64;
 use header::WebSocketKey;
 use openssl::hash::{self, hash};
 use result::{WebSocketResult, WebSocketError};
@@ -24,7 +24,7 @@ impl FromStr for WebSocketAccept {
 	type Err = WebSocketError;
 
 	fn from_str(accept: &str) -> WebSocketResult<WebSocketAccept> {
-		match accept.from_base64() {
+		match base64::decode(accept) {
 			Ok(vec) => {
 				if vec.len() != 20 {
 					return Err(WebSocketError::ProtocolError(
@@ -65,7 +65,7 @@ impl WebSocketAccept {
 	/// Return the Base64 encoding of this WebSocketAccept
 	pub fn serialize(&self) -> String {
 		let WebSocketAccept(accept) = *self;
-		accept.to_base64(STANDARD)
+		base64::encode(&accept)
 	}
 }
 

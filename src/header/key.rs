@@ -5,7 +5,7 @@ use std::fmt::{self, Debug};
 use rand;
 use std::mem;
 use std::str::FromStr;
-use serialize::base64::{ToBase64, FromBase64, STANDARD};
+use base64;
 use result::{WebSocketResult, WebSocketError};
 
 /// Represents a Sec-WebSocket-Key header.
@@ -22,7 +22,7 @@ impl FromStr for WebSocketKey {
 	type Err = WebSocketError;
 
 	fn from_str(key: &str) -> WebSocketResult<WebSocketKey> {
-		match key.from_base64() {
+		match base64::decode(key) {
 			Ok(vec) => {
 				if vec.len() != 16 {
 					return Err(WebSocketError::ProtocolError(
@@ -34,7 +34,7 @@ impl FromStr for WebSocketKey {
 				for i in array.iter_mut() {
 					*i = iter.next().unwrap();
 				}
-				
+
 				Ok(WebSocketKey(array))
 			}
 			Err(_) => {
@@ -60,7 +60,7 @@ impl WebSocketKey {
 	/// Return the Base64 encoding of this WebSocketKey
 	pub fn serialize(&self) -> String {
 		let WebSocketKey(key) = *self;
-		key.to_base64(STANDARD)
+        base64::encode(&key)
 	}
 }
 
@@ -88,11 +88,11 @@ mod tests {
 	#[test]
 	fn test_header_key() {
 		use header::Headers;
-		
+
 		let extensions = WebSocketKey([65; 16]);
 		let mut headers = Headers::new();
 		headers.set(extensions);
-		
+
 		assert_eq!(&headers.to_string()[..], "Sec-WebSocket-Key: QUFBQUFBQUFBQUFBQUFBQQ==\r\n");
 	}
 	#[bench]
