@@ -1,9 +1,8 @@
 //! Describes the generic DataFrame, defining a trait
 //! that all dataframes should share. This is so one can
-//! optomize the memory footprint of a dataframe for their
+//! optimize the memory footprint of a dataframe for their
 //! own needs, and be able to use custom dataframes quickly
 use std::io::Write;
-use std::borrow::Cow;
 use result::WebSocketResult;
 use ws::util::header as dfh;
 use ws::util::mask::Masker;
@@ -13,112 +12,81 @@ use ws::util::mask;
 /// provide these methods. (If the payload is not known in advance then
 /// rewrite the write_payload method)
 pub trait DataFrame {
-    /// Is this dataframe the final dataframe of the message?
-    fn is_last(&self) -> bool;
-    /// What type of data does this dataframe contain?
-    fn opcode(&self) -> u8;
-    /// Reserved bits of this dataframe
-    fn reserved<'a>(&'a self) -> &'a [bool; 3];
-    /// Entire payload of the dataframe. If not known then implement
-    /// write_payload as that is the actual method used when sending the
-    /// dataframe over the wire.
-    fn payload<'a>(&'a self) -> Cow<'a, [u8]>;
+	/// Is this dataframe the final dataframe of the message?
+	fn is_last(&self) -> bool;
+	/// What type of data does this dataframe contain?
+	fn opcode(&self) -> u8;
+	/// Reserved bits of this dataframe
+	fn reserved(&self) -> &[bool; 3];
 
-    /// How long (in bytes) is this dataframe's payload
-    fn size(&self) -> usize {
-        self.payload().len()
-    }
+	/// How long (in bytes) is this dataframe's payload
+	fn size(&self) -> usize;
 
-    /// Write the payload to a writer
-    fn write_payload<W>(&self, socket: &mut W) -> WebSocketResult<()>
-    where W: Write {
-        try!(socket.write_all(&*self.payload()));
-        Ok(())
-    }
-
-    /// Writes a DataFrame to a Writer.
-    fn write_to<W>(&self, writer: &mut W, mask: bool) -> WebSocketResult<()>
-	where W: Write {
-    	let mut flags = dfh::DataFrameFlags::empty();
-    	if self.is_last() {
-            flags.insert(dfh::DataFrameFlags::FIN);
+	/// Get's the size of the entire dataframe in bytes,
+	/// i.e. header and payload.
+	fn frame_size(&self, masked: bool) -> usize {
+		// one byte for the opcode & reserved & fin
+		1
+        // depending on the size of the payload, add the right payload len bytes
+        + match self.size() {
+            s if s <= 125 => 1,
+            s if s <= 65535 => 3,
+            _ => 9,
         }
-        {
-            let reserved = self.reserved();
-        	if reserved[0] {
-                flags.insert(dfh::DataFrameFlags::RSV1);
-            }
-        	if reserved[1] {
-                flags.insert(dfh::DataFrameFlags::RSV2);
-            }
-        	if reserved[2] {
-                flags.insert(dfh::DataFrameFlags::RSV3);
-            }
-        }
-
-    	let masking_key = if mask {
-            Some(mask::gen_mask())
+        // add the mask size if there is one
+        + if masked {
+            4
         } else {
-            None
-        };
+            0
+        }
+        // finally add the payload len
+        + self.size()
+	}
 
-    	let header = dfh::DataFrameHeader {
-    		flags: flags,
-    		opcode: self.opcode() as u8,
-    		mask: masking_key,
-    		len: self.size() as u64,
-    	};
+	/// Write the payload to a writer
+	fn write_payload(&self, socket: &mut Write) -> WebSocketResult<()>;
 
-    	try!(dfh::write_header(writer, header));
+	/// Takes the payload out into a vec
+	fn take_payload(self) -> Vec<u8>;
 
-    	match masking_key {
-    		Some(mask) => {
-                let mut masker = Masker::new(mask, writer);
-                try!(self.write_payload(&mut masker))
-            },
-    		None => try!(self.write_payload(writer)),
-    	};
-    	try!(writer.flush());
-        Ok(())
-    }
-}
+	/// Writes a DataFrame to a Writer.
+	fn write_to(&self, writer: &mut Write, mask: bool) -> WebSocketResult<()> {
+		let mut flags = dfh::DataFrameFlags::empty();
+		if self.is_last() {
+			flags.insert(dfh::DataFrameFlags::FIN);
+		}
+		{
+			let reserved = self.reserved();
+			if reserved[0] {
+				flags.insert(dfh::DataFrameFlags::RSV1);
+			}
+			if reserved[1] {
+				flags.insert(dfh::DataFrameFlags::RSV2);
+			}
+			if reserved[2] {
+				flags.insert(dfh::DataFrameFlags::RSV3);
+			}
+		}
 
-impl<'a, D> DataFrame for &'a D
-where D: DataFrame {
-    #[inline(always)]
-    fn is_last(&self) -> bool {
-        D::is_last(self)
-    }
+		let masking_key = if mask { Some(mask::gen_mask()) } else { None };
 
-    #[inline(always)]
-    fn opcode(&self) -> u8 {
-        D::opcode(self)
-    }
+		let header = dfh::DataFrameHeader {
+			flags: flags,
+			opcode: self.opcode() as u8,
+			mask: masking_key,
+			len: self.size() as u64,
+		};
 
-    #[inline(always)]
-    fn reserved<'b>(&'b self) -> &'b [bool; 3] {
-        D::reserved(self)
-    }
+		dfh::write_header(writer, header)?;
 
-    #[inline(always)]
-    fn payload<'b>(&'b self) -> Cow<'b, [u8]> {
-        D::payload(self)
-    }
-
-    #[inline(always)]
-    fn size(&self) -> usize {
-        D::size(self)
-    }
-
-    #[inline(always)]
-    fn write_payload<W>(&self, socket: &mut W) -> WebSocketResult<()>
-    where W: Write {
-        D::write_payload(self, socket)
-    }
-
-    #[inline(always)]
-    fn write_to<W>(&self, writer: &mut W, mask: bool) -> WebSocketResult<()>
-	where W: Write {
-        D::write_to(self, writer, mask)
-    }
+		match masking_key {
+			Some(mask) => {
+				let mut masker = Masker::new(mask, writer);
+				self.write_payload(&mut masker)?
+			}
+			None => self.write_payload(writer)?,
+		};
+		writer.flush()?;
+		Ok(())
+	}
 }

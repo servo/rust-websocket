@@ -1,34 +1,42 @@
 [package]
-
 name = "servo-websocket"
 version = "0.20.1"
-authors = ["cyderize <admin@cyderize.org>"]
-
+authors = ["cyderize <admin@cyderize.org>", "Michael Eden <themichaeleden@gmail.com>"]
 description = "A WebSocket (RFC6455) library for Rust."
-
 documentation = "http://cyderize.github.io/rust-websocket/doc/websocket/"
 homepage = "http://cyderize.github.io/rust-websocket/"
 repository = "https://github.com/cyderize/rust-websocket.git"
 readme = "README.md"
-keywords = ["websocket", "websockets", "rfc6455"]
+keywords = ["websocket", "websockets", "rfc6455", "async", "tokio"]
+categories = ["asynchronous", "network-programming", "web-programming", "web-programming::websocket"]
 license = "MIT"
 
 [lib]
 name = "websocket"
 
 [dependencies]
-hyper = "0.10"
-unicase = "1.0.1"
-openssl = "0.9"
+hyper = "^0.10.6"
+unicase = "1.0"
 url = "1.0"
 bitflags = "1.0"
-rand = "0.3.12"
+rand = "0.3"
 byteorder = "1.0"
-net2 = "0.2.17"
+sha1 = "0.2"
 base64 = "0.6"
+futures = { version = "0.1", optional = true }
+tokio-core = { version = "0.1", optional = true }
+tokio-io = { version = "^0.1.2", optional = true }
+tokio-tls = { version = "0.1", optional = true }
+bytes = { version = "0.4", optional = true }
+native-tls = { version = "^0.1.2", optional = true }
 
 [dev-dependencies]
-serde_json = "1"
+futures-cpupool = "0.1"
 
 [features]
+default = ["sync", "sync-ssl", "async", "async-ssl"]
+sync = []
+sync-ssl = ["native-tls", "sync"]
+async = ["tokio-core", "tokio-io", "bytes", "futures"]
+async-ssl = ["native-tls", "tokio-tls", "async"]
 nightly = ["hyper/nightly"]
