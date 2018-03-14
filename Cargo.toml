@@ -1,6 +1,6 @@
 [package]
 name = "servo-websocket"
-version = "0.20.1"
+version = "0.21.0"
 authors = ["cyderize <admin@cyderize.org>", "Michael Eden <themichaeleden@gmail.com>"]
 description = "A WebSocket (RFC6455) library for Rust."
 documentation = "http://cyderize.github.io/rust-websocket/doc/websocket/"
