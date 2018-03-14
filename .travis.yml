@@ -1,8 +1,10 @@
 language: rust
 rust: nightly
+before_script:
+  - export PATH="$PATH:$HOME/.cargo/bin"
 
 script:
-    - cargo build --features nightly
+    - ./scripts/build-all.sh
     - cargo test --features nightly
     - cargo bench --features nightly
 
